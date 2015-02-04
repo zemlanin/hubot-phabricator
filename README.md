@@ -19,4 +19,4 @@ phabricator update signature
   - [ ] _optionally_ notify user on new reviews
 - [ ] guess phabricator username not only by email, but also by chat username
 - [ ] slack attachments (slackhq/hubot-slack#148)
-- [ ] reply with differantial link on messages with D[0-9]+
+- [ ] reply with differential link on messages with D[0-9]+
