@@ -1,7 +1,11 @@
 _ = require 'lodash'
 sha1 = require 'sha1'
 
-{PH_HOST, PH_USER, PH_CERT} = require '../config.json'
+{
+  HUBOT_PHABRICATOR_HOST: PH_HOST # "http://example.com"
+  HUBOT_PHABRICATOR_USER: PH_USER # "username on phabricator"
+  HUBOT_PHABRICATOR_CERT: PH_CERT # "certificate from [PH_HOST]/settings/panel/conduit/"
+} = process.env
 
 keyPHId = (userId) -> 'pha__phid_'+userId
 
