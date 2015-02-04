@@ -149,7 +149,7 @@ module.exports = (robot) ->
 
       msg.reply result
 
-  robot.respond /pha resign/i, (msg) ->
+  robot.respond /pha(bricator)? update signature/i, (msg) ->
     getConduitSignature(robot, -> (->) ) (signature, err) ->
       if err
         msg.reply err
