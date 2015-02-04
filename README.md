@@ -4,7 +4,7 @@ A Hubot script for interacting with Phabricator
 
 ## TODO
 - [ ] hubot script documentation 
-- [ ] *TESTS*
+- [ ] **TESTS**
 - [ ] reviews of other users
 - [ ] notify user on new reviews
   - [ ] _optionally_ notify user on new reviews
