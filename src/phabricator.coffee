@@ -1,3 +1,23 @@
+# Description:
+#   A Hubot script for interacting with Phabricator
+#
+# Dependencies:
+#   "lodash": "^3.1.0"
+#   "sha1": "^1.1.0"
+#
+# Configurations:
+#   HUBOT_PHABRICATOR_HOST="http://example.com"
+#   HUBOT_PHABRICATOR_USER="usernameOnPhabricator"
+#   HUBOT_PHABRICATOR_CERT="certificateFrom[HUBOT_PHABRICATOR_HOST]/settings/panel/conduit/"
+#
+# Commands:
+#   hubot phabricator my <any|open|closed|accepted> reviews - Displays reviews which has you as responsible user
+#   hubot my reviews - Alias for `phabricator my reviews`
+#   hubot phabricator whoami - Displays your linked Phabricator username guessed based on email
+#   hubot phabricator i am <username> - Sets your linked Phabricator username
+#   hubot phabricator ping - Pings Phabricator's API  
+#   hubot phabricator update signature - Updates session key and connection in Hubot's brain
+
 _ = require 'lodash'
 sha1 = require 'sha1'
 
