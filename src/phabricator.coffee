@@ -28,6 +28,8 @@ sha1 = require 'sha1'
 } = process.env
 
 keyPHId = (userId) -> 'pha__phid_'+userId
+keySubInterval = (userId) -> 'pha__sub_interval_'+userId
+keySubLast = (userId) -> 'pha__sub_last_'+userId
 
 _performSignedConduitCall = (robot, endpoint, signature, params) ->
   return (callback) -> # callback :: (result, err) ->
@@ -232,3 +234,109 @@ module.exports = (robot) ->
             'text'
           ).join('\n\t')
         )
+
+  robot.respond /pha(bricator)? unsub(scribe)?/i, (msg) ->
+    userId = msg.message.user.id
+
+    if msg.getChannelType?() == 'DM'
+      msg.reply 'deal with subscription in private'
+
+    if robot.brain.get keySubInterval userId
+      clearInterval robot.brain.get keySubInterval userId
+
+    robot.brain.remove keySubInterval userId
+    robot.brain.remove keySubLast userId
+
+    msg.reply 'you\'ve been unsubscribed from phabricator notifications'
+
+  robot.respond /pha(bricator)? sub(scribe)?/i, (msg) ->
+    userId = msg.message.user.id
+
+    if msg.getChannelType?() == 'DM'
+      msg.reply 'subscribe in private'
+      return
+
+    if robot.brain.get keySubInterval userId
+      clearInterval robot.brain.get keySubInterval userId
+      robot.brain.remove keySubInterval userId
+
+    replyWithPHID(robot, userId) (phid) ->
+      unless phid?
+        replyToAnon msg
+        return
+
+      responsibleUsers = [phid]
+      limit = 10
+      query = _.assign {responsibleUsers, limit}, {
+        order: 'order-modified'
+      }
+
+      intervalId = setInterval(
+        ->
+          performConduitCall(robot, 'differential.query', query) (result, err) ->
+            if err
+              msg.reply err
+              return
+
+            if robot.brain.get keySubLast userId
+              lastChecked = robot.brain.get keySubLast userId
+              result = _.filter(
+                result,
+                (value) ->
+                  value.dateModified >= lastChecked
+              )
+
+            robot.brain.set keySubLast(userId), parseInt(Date.now() / 1000, 10)
+
+            result = _.filter(
+              result,
+              (value) ->
+                switch value.status
+                  when '0' # Needs review
+                    phid in value.reviewers
+                  when '1' # Needs revision
+                    phid is value.author
+                  when '2' # Accepted
+                    phid is value.author
+                  when '3' # Closed
+                    false
+                  when '4' # Abandoned
+                    false
+            )
+
+            unless result.length
+              return
+
+            diffsList = _.map(result, (value) ->
+              switch value.status
+                when '0' # Needs review
+                  icon = ':o:'
+                when '1' # Needs revision
+                  icon = ':-1:'
+                when '2' # Accepted
+                  icon = ':+1:'
+                when '3' # Closed
+                  icon = ':shipit:'
+                when '4' # Abandoned
+                  icon = ':poop:'
+
+              {
+                text: (
+                  "#{icon} #{value.uri}\n\t#{value.title}"
+                    .replace('&', '&amp;')
+                    .replace('<', '&lt;')
+                    .replace('>', '&gt;')
+                )
+              }
+            )
+
+            msg.reply(
+              _.pluck(
+                diffsList
+                'text'
+              ).join('\n\t')
+            )
+        30000
+      )
+
+      msg.reply 'you\'ve been subscribed to phabricator notifications'
