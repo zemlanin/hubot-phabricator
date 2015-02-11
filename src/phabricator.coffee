@@ -341,6 +341,6 @@ module.exports = (robot) ->
         30000
       )
 
-      robot.brain.setet keySubInterval(userId), intervalId
+      robot.brain.set keySubInterval(userId), intervalId
 
       msg.reply 'you\'ve been subscribed to phabricator notifications'
