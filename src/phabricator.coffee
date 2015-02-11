@@ -17,6 +17,8 @@
 #   hubot phabricator i am <username> - Sets your linked Phabricator username
 #   hubot phabricator ping - Pings Phabricator's API  
 #   hubot phabricator update signature - Updates session key and connection in Hubot's brain
+#   hubot phabricator subscribe - Subscribes to important actions (**use only in DM**)
+#   hubot phabricator unsubscribe - Unsubscribes from important actions
 
 _ = require 'lodash'
 sha1 = require 'sha1'
@@ -338,5 +340,7 @@ module.exports = (robot) ->
             )
         30000
       )
+
+      robot.brain.setet keySubInterval(userId), intervalId
 
       msg.reply 'you\'ve been subscribed to phabricator notifications'
