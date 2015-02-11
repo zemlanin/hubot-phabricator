@@ -17,8 +17,8 @@
 #   hubot phabricator i am <username> - Sets your linked Phabricator username
 #   hubot phabricator ping - Pings Phabricator's API  
 #   hubot phabricator update signature - Updates session key and connection in Hubot's brain
-#   hubot phabricator subscribe - Subscribes to important actions (**use only in DM**)
-#   hubot phabricator unsubscribe - Unsubscribes from important actions
+#   phabricator subscribe - Subscribes to important actions (**use only in DM**)
+#   phabricator unsubscribe - Unsubscribes from important actions (**use only in DM**)
 
 _ = require 'lodash'
 sha1 = require 'sha1'
@@ -30,8 +30,19 @@ sha1 = require 'sha1'
 } = process.env
 
 keyPHId = (userId) -> 'pha__phid_'+userId
-keySubInterval = (userId) -> 'pha__sub_interval_'+userId
-keySubLast = (userId) -> 'pha__sub_last_'+userId
+keyUser = (phid) -> 'pha__user_'+phid
+keySubIgnore = 'pha__sub_ignore'
+keySubLast = 'pha__sub_last'
+
+STATUS =
+  NEEDS_REVIEW: '0'
+  NEEDS_REVISION: '1'
+  ACCEPTED: '2'
+  CLOSED: '3'
+  ABANDONED: '4'
+
+modifiedAfter = (lastChecked, value) ->
+  value.dateModified >= lastChecked
 
 _performSignedConduitCall = (robot, endpoint, signature, params) ->
   return (callback) -> # callback :: (result, err) ->
@@ -122,6 +133,7 @@ replyWithPHID = (robot, userId, possibleUsername) ->
         if result?[aliases[0]]?
           unless possibleUsername
             robot.brain.set keyPHId(userId), result[aliases[0]]
+            robot.brain.set keyUser(result[aliases[0]]), userId
 
           callback result[aliases[0]]
         else
@@ -153,6 +165,7 @@ module.exports = (robot) ->
           msg.reply 'you are ' + result[phid].name
         else
           robot.brain.remove keyPHId(userId)
+          robot.brain.remove keyUser(phid)
           replyToAnon msg
 
   robot.respond /pha(bricator)? i('m| am) ([a-z0-9]+)/i, (msg) ->
@@ -160,6 +173,7 @@ module.exports = (robot) ->
     replyWithPHID(robot, userId, msg.match[3]) (phid) ->
       if phid?
         robot.brain.set keyPHId(userId), phid
+        robot.brain.set keyUser(phid), userId
         msg.reply 'i will remember your phid, which is ' + phid
 
       else
@@ -237,110 +251,112 @@ module.exports = (robot) ->
           ).join('\n\t')
         )
 
+  subIntervalId = setInterval(
+    ->
+      query = {
+        order: 'order-modified'
+        limit: 10
+      }
+
+      performConduitCall(robot, 'differential.query', query) (result, err) ->
+        if err
+          robot.messageRoom 'general', 'phabricator subscription error: '+err
+          clearInterval subIntervalId
+          return
+
+        if robot.brain.get keySubLast
+          lastChecked = robot.brain.get keySubLast
+          result = _.filter(
+            result,
+            modifiedAfter.bind null, lastChecked
+          )
+
+        robot.brain.set keySubLast, parseInt(Date.now() / 1000, 10)
+
+        unless result.length
+          return
+
+        for review in result
+          icon = switch review.status
+            when STATUS.NEEDS_REVIEW
+              ':o:'
+            when STATUS.NEEDS_REVISION
+              ':-1:'
+            when STATUS.ACCEPTED
+              ':+1:'
+            when STATUS.CLOSED
+              ':shipit:'
+            when STATUS.ABANDONED
+              ':poop:'
+
+          notifyUsers = switch review.status
+            when STATUS.NEEDS_REVIEW
+              _(review.reviewers)
+            when STATUS.NEEDS_REVISION
+              _([review.authorPHID])
+            when STATUS.ACCEPTED
+              _([review.authorPHID])
+            when STATUS.CLOSED
+              _()
+            when STATUS.ABANDONED
+              _()
+
+          notifyUsers
+            .reject(_.includes.bind(null, robot.brain.get keySubIgnore))
+            .map(keyUser)
+            .map(robot.brain.get.bind(robot.brain))
+            .filter()
+            .map(robot.brain.userForId.bind(robot.brain))
+            .filter()
+            .map('name')
+            .each(
+              (username) ->
+                msgText = (
+                  "#{icon} #{review.uri}\n\t#{review.title}"
+                    .replace('&', '&amp;')
+                    .replace('<', '&lt;')
+                    .replace('>', '&gt;')
+                )
+                robot.messageRoom username, msgText
+            )
+            .value()
+    30000
+  )
+
   robot.respond /pha(bricator)? unsub(scribe)?/i, (msg) ->
     userId = msg.message.user.id
 
-    if msg.getChannelType?() == 'DM'
+    if msg.room != msg.message.user.name
       msg.reply 'deal with subscription in private'
-
-    if robot.brain.get keySubInterval userId
-      clearInterval robot.brain.get keySubInterval userId
-
-    robot.brain.remove keySubInterval userId
-    robot.brain.remove keySubLast userId
-
-    msg.reply 'you\'ve been unsubscribed from phabricator notifications'
-
-  robot.respond /pha(bricator)? sub(scribe)?/i, (msg) ->
-    userId = msg.message.user.id
-
-    if msg.getChannelType?() == 'DM'
-      msg.reply 'subscribe in private'
-      return
-
-    if robot.brain.get keySubInterval userId
-      clearInterval robot.brain.get keySubInterval userId
-      robot.brain.remove keySubInterval userId
 
     replyWithPHID(robot, userId) (phid) ->
       unless phid?
         replyToAnon msg
         return
 
-      responsibleUsers = [phid]
-      limit = 10
-      query = _.assign {responsibleUsers, limit}, {
-        order: 'order-modified'
-      }
+      ignoreList = robot.brain.get(keySubIgnore) or []
+      if phid in ignoreList
+        msg.reply 'you\'ve already been unsubscribed from phabricator notifications'
+      else
+        ignoreList.push phid
+        robot.brain.set keySubIgnore, ignoreList
 
-      intervalId = setInterval(
-        ->
-          performConduitCall(robot, 'differential.query', query) (result, err) ->
-            if err
-              msg.reply err
-              return
+        msg.reply 'you\'ve been unsubscribed from phabricator notifications'
 
-            if robot.brain.get keySubLast userId
-              lastChecked = robot.brain.get keySubLast userId
-              result = _.filter(
-                result,
-                (value) ->
-                  value.dateModified >= lastChecked
-              )
+  robot.respond /pha(bricator)? sub(scribe)?/i, (msg) ->
+    userId = msg.message.user.id
 
-            robot.brain.set keySubLast(userId), parseInt(Date.now() / 1000, 10)
+    if msg.room != msg.message.user.name
+      msg.reply 'deal with subscription in private'
 
-            result = _.filter(
-              result,
-              (value) ->
-                switch value.status
-                  when '0' # Needs review
-                    phid in value.reviewers
-                  when '1' # Needs revision
-                    phid is value.author
-                  when '2' # Accepted
-                    phid is value.author
-                  when '3' # Closed
-                    false
-                  when '4' # Abandoned
-                    false
-            )
+    replyWithPHID(robot, userId) (phid) ->
+      unless phid?
+        replyToAnon msg
+        return
 
-            unless result.length
-              return
-
-            diffsList = _.map(result, (value) ->
-              switch value.status
-                when '0' # Needs review
-                  icon = ':o:'
-                when '1' # Needs revision
-                  icon = ':-1:'
-                when '2' # Accepted
-                  icon = ':+1:'
-                when '3' # Closed
-                  icon = ':shipit:'
-                when '4' # Abandoned
-                  icon = ':poop:'
-
-              {
-                text: (
-                  "#{icon} #{value.uri}\n\t#{value.title}"
-                    .replace('&', '&amp;')
-                    .replace('<', '&lt;')
-                    .replace('>', '&gt;')
-                )
-              }
-            )
-
-            msg.reply(
-              _.pluck(
-                diffsList
-                'text'
-              ).join('\n\t')
-            )
-        30000
-      )
-
-      robot.brain.set keySubInterval(userId), intervalId
+      ignoreList = robot.brain.get(keySubIgnore) or []
+      if phid in ignoreList
+        ignoreList = _.without ignoreList, phid
+        robot.brain.set keySubIgnore, ignoreList
 
       msg.reply 'you\'ve been subscribed to phabricator notifications'

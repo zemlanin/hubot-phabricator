@@ -1,6 +1,6 @@
 {
   "name": "hubot-phabricator",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "A Hubot script for interacting with Phabricator",
   "main": "index.coffee",
   "scripts": {
