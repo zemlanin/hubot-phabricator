@@ -326,7 +326,7 @@ module.exports = (robot) ->
   robot.respond /pha(bricator)? unsub(scribe)?/i, (msg) ->
     userId = msg.message.user.id
 
-    if msg.room != msg.message.user.name
+    if msg.message.room != msg.message.user.name
       msg.reply 'deal with subscription in private'
 
     replyWithPHID(robot, userId) (phid) ->
@@ -346,7 +346,7 @@ module.exports = (robot) ->
   robot.respond /pha(bricator)? sub(scribe)?/i, (msg) ->
     userId = msg.message.user.id
 
-    if msg.room != msg.message.user.name
+    if msg.message.room != msg.message.user.name
       msg.reply 'deal with subscription in private'
 
     replyWithPHID(robot, userId) (phid) ->
