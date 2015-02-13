@@ -58,11 +58,12 @@ _performSignedConduitCall = (robot, endpoint, signature, params) ->
     })
       .post(data) (err, res, body) ->
         bodyJSON = JSON.parse body
-        if bodyJSON.result?
+        if bodyJSON?.result?
           callback bodyJSON.result
-        else
-          console.dir bodyJSON
+        else if bodyJSON?
           callback null, 'error with conduit call: '+bodyJSON.error_code
+        else
+          getConduitSignature robot, (->)
 
 
 performConduitCall = (robot, endpoint, params={}) ->
@@ -100,7 +101,7 @@ getConduitSignature = (robot, signCallback) ->
     })
       .post(data) (err, res, body) ->
         bodyJSON = JSON.parse body
-        if bodyJSON.result?
+        if bodyJSON?.result?
           robot.brain.set {
             'conduit__signature_sessionKey': bodyJSON.result.sessionKey
             'conduit__signature_connectionID': bodyJSON.result.connectionID
@@ -112,7 +113,7 @@ getConduitSignature = (robot, signCallback) ->
           })(callback)
         else
           console.dir bodyJSON
-          callback null, 'error with signature conduit call: '+bodyJSON.error_code
+          callback null, 'error with signature conduit call: '+bodyJSON?.error_code
 
 replyWithPHID = (robot, userId, possibleUsername) ->
   phid = robot.brain.get keyPHId(userId)
