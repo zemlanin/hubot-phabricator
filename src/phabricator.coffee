@@ -58,12 +58,12 @@ _performSignedConduitCall = (robot, endpoint, signature, params) ->
     })
       .post(data) (err, res, body) ->
         bodyJSON = JSON.parse body
-        if bodyJSON?.result?
+        if bodyJSON?.result
           callback bodyJSON.result
-        else if bodyJSON?
-          callback null, 'error with conduit call: '+bodyJSON.error_code
-        else
+        else if bodyJSON?.error_code is 'ERR-INVALID-SESSION'
           getConduitSignature robot, (->)
+        else
+          callback null, 'error with conduit call: '+bodyJSON?.error_code
 
 
 performConduitCall = (robot, endpoint, params={}) ->
