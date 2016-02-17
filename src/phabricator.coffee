@@ -169,7 +169,7 @@ module.exports = (robot) ->
           robot.brain.remove keyUser(phid)
           replyToAnon msg
 
-  robot.respond /pha(bricator)? i('m| am) ([a-z0-9]+)/i, (msg) ->
+  robot.respond /pha(bricator)? i('m| am) ([a-zA-Z0-9._-]+)/i, (msg) ->
     userId = msg.message.user.id
     replyWithPHID(robot, userId, msg.match[3]) (phid) ->
       if phid?
