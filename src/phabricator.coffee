@@ -27,7 +27,11 @@ sha1 = require 'sha1'
   HUBOT_PHABRICATOR_HOST: PH_HOST # "http://example.com"
   HUBOT_PHABRICATOR_USER: PH_USER # "username on phabricator"
   HUBOT_PHABRICATOR_CERT: PH_CERT # "certificate from [PH_HOST]/settings/panel/conduit/"
+  HUBOT_PHABRICATOR_DEBUG_ROOM: DEBUG_ROOM # room to send debugging information to
 } = process.env
+
+if not DEBUG_ROOM
+  DEBUG_ROOM = "general"
 
 keyPHId = (userId) -> 'pha__phid_'+userId
 keyUser = (phid) -> 'pha__user_'+phid
@@ -261,7 +265,7 @@ module.exports = (robot) ->
 
       performConduitCall(robot, 'differential.query', query) (result, err) ->
         if err
-          robot.messageRoom 'general', 'phabricator subscription error: '+err
+          robot.messageRoom DEBUG_ROOM, 'phabricator subscription error: '+err
           clearInterval subIntervalId
           return
 
