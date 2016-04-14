@@ -15,7 +15,7 @@
 #   hubot my reviews - Alias for `phabricator my reviews`
 #   hubot phabricator whoami - Displays your linked Phabricator username guessed based on email
 #   hubot phabricator i am <username> - Sets your linked Phabricator username
-#   hubot phabricator ping - Pings Phabricator's API  
+#   hubot phabricator ping - Pings Phabricator's API
 #   hubot phabricator update signature - Updates session key and connection in Hubot's brain
 #   phabricator subscribe - Subscribes to important actions (**use only in DM**)
 #   phabricator unsubscribe - Unsubscribes from important actions (**use only in DM**)
@@ -24,10 +24,10 @@ _ = require 'lodash'
 sha1 = require 'sha1'
 
 {
-  HUBOT_PHABRICATOR_HOST: PH_HOST # "http://example.com"
-  HUBOT_PHABRICATOR_USER: PH_USER # "username on phabricator"
-  HUBOT_PHABRICATOR_CERT: PH_CERT # "certificate from [PH_HOST]/settings/panel/conduit/"
-  HUBOT_PHABRICATOR_DEBUG_ROOM: DEBUG_ROOM # room to send debugging information to
+  PH_HOST: HUBOT_PHABRICATOR_HOST # "http://example.com"
+  PH_USER: HUBOT_PHABRICATOR_USER # "username on phabricator"
+  PH_CERT: HUBOT_PHABRICATOR_CERT # "certificate from [PH_HOST]/settings/panel/conduit/"
+  DEBUG_ROOM: HUBOT_PHABRICATOR_DEBUG_ROOM  # room to send debugging information to
 } = process.env
 
 if not DEBUG_ROOM
